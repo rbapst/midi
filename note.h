@@ -1,0 +1,9 @@
+#define B3 59
+#define C4 60
+#define D4 62
+#define E4 64
+#define F4 65
+#define G4 67
+#define A4 69
+#define B4 71
+#define C5 72
