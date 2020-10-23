@@ -11,5 +11,6 @@ std::ostream& operator<<(std::ostream &os, const Event &event)
   os<<","<<std::hex << (int)event.note.velocity;
   os<<","<<std::hex << (int)event.note.key;
   os<<")"<<std::endl;
+  return os;
 }
 
