@@ -1,3 +1,4 @@
+// To play a sequence of chord in sync with external midi events
 #include <iostream>
 #include <fstream>
 #include <cstring>
@@ -14,24 +15,27 @@
 #define PITCHBEND 0xe0
 
 // System Common Messages
-#define SYSEX 0xf0
 #define MTCQF 0xf1 // MIDI Time Code Quarter Frame
-#define SONGPOSPTR 0xf2
-#define SONGSELECT 0xf3
+#define SONGPOSPTR 0xf2 // Song Position Pointer
+#define SONGSELECT 0xf3 // Song Select
 // 0xf4 - 0xf5 Undefined (Reserved)
-#define TUNEREQU 0xf6
-#define ENDEX 0xf7
+#define TUNEREQU 0xf6 // Tune Request
+#define EOX 0xf7 // End Of Exclusive
 
-// System Real Time
-#define CLOCK 0xf8
+// System Exclusive
+#define SYSEX 0xf0
+
+// System Real Time Messages
+#define CLOCK 0xf8 // Timing Clock
 // 0xf9 Undefined (Reserved)
-#define START 0xfa
-#define CONT 0xfb
-#define STOP 0xfc
+#define START 0xfa // Start
+#define CONT 0xfb // Continue
+#define STOP 0xfc // Stop
 // 0xfd Undefined (Reserved)
-#define SENSING 0xfe
-#define RESET 0xff
+#define SENSING 0xfe // Active Sense
+#define RESET 0xff // System Reset
 
+// Note Number (Middle C = "C4" = 60)
 #define B3 59
 #define C4 60
 #define D4 62
@@ -70,8 +74,10 @@ void setup() {
   }
 }
 
+// Convert from Midi Byte to Name (string)
 std::string midiEventName(unsigned char event) {
-  if (event >= 0xf0) {
+  // Return name of Midi Status Byte (ie byte >= 0xf0)
+  if (event >= 0xf0) { // Midi System Message
     switch (event) {
     case 0xf0: return("SYSEX"); break;
     case 0xf1: return("MTCQF"); break;
@@ -80,18 +86,20 @@ std::string midiEventName(unsigned char event) {
       //  case 0xf4: return("reserved"); break;
       //  case 0xf5: return("reserved"); break;
     case 0xf6: return("TUNEREQU"); break;
-    case 0xf7: return("ENDEX"); break;
-      //    case 0xf8: return("RTCLOCK"); break;
+    case 0xf7: return("EOX"); break;
+      //  case 0xf8: return("RTCLOCK"); break;
       //  case 0xf9: return("reserved"); break;
     case 0xfa: return("RTSTART"); break;
     case 0xfb: return("RTCONT"); break;
     case 0xfc: return("RTSTOP"); break;
       //  case 0xfd: return("reserved"); break;
-      //    case 0xfe: return("RTSENSIG"); break;
+    case 0xfe: return("RTSENSIG"); break;
     case 0xff: return("RESET"); break;
-    default: return("");
+    default: return("reserved system message");
     }
-  } else if (event >= 0x80) {
+  } // Return name of Channel Message
+  else if (event >= 0x80) { // Channel Voice Message
+    unsigned char midi_channel = 1 + event & 0x0f;
     switch (event & 0xf0) {
     case 0x80: return("NOTEOFF"); break;
     case 0x90: return("NOTEON"); break;
@@ -102,7 +110,7 @@ std::string midiEventName(unsigned char event) {
     case 0xe0: return("PITCHBEND"); break;
     }
   }
-  else {
+  else { // Midi Data Message
     return(std::to_string(event));
   }
   return("");
