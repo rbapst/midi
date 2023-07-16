@@ -5,6 +5,12 @@
 #include <signal.h>
 #include <set>
 
+//#include <algorithm>
+#include <chrono>
+#include <thread>
+//#include <ctime>
+#include <iomanip>
+
 // Channel Voice Messages
 #define NOTEOFF 0x80
 #define NOTEON 0x90
@@ -128,6 +134,39 @@ void playChord(int velocity, const std::string& chord) {
 
 }
 
+void clk() {
+  // Called whenever 0xF8 (CLK) midi System Real Time message is received
+  // Update average period between CLK event
+  static const int clk_count = 24; // Number of clocks used for the avergage
+  static int period_us[clk_count] = {0}; // ring buffer of periods in microseconds
+  static int sum_periods_us = 0; // sum of the ring buffer
+  static int i_period_us = 0; // current pointer in period_us[] ring buffer
+  static std::chrono::time_point<std::chrono::steady_clock> clk_clock; // previous absolute clock
+
+  auto now = std::chrono::steady_clock::now();
+  auto current_period = (std::chrono::duration_cast<std::chrono::microseconds>(now - clk_clock));
+  clk_clock = now;
+
+  sum_periods_us += current_period.count() - period_us[i_period_us];
+  period_us[i_period_us] = current_period.count();
+  i_period_us++;
+  if (i_period_us == clk_count) {
+    if (sum_periods_us != 0) {
+      // Period in [us] of "clk_count" midi CLK events = sum_periods_us
+      // Period in [us] of one midi CLK event = sum_periods_us / clk_count
+      // Period in [s] of one midi CLK events = sum_periods_us / (clk_count * 1'000'000)
+      // Frequency in [Hz] of 1 midi CLK events = (clk_count * 1'000'000) / sum_periods_us
+      // 1 midi CLK event = 1/24 quarter
+      // BPM = number of quarter per minute = number of quarter per 60 s
+      // BPM = f*60/24 = 2.5 * (clk_count * 1'000'000) / sum_periods_us = 2_500_000 * clk_count/sum_periods_us
+      std::cout << "bpm=" << 2500000*clk_count/sum_periods_us << "\n";
+    } else {
+      std::cout << "bpm=undef";
+    }
+    i_period_us=0;
+  }
+}
+
 void loop() {
   char buffer[1];
   unsigned char byte;
@@ -143,6 +182,7 @@ void loop() {
   byte = buffer[0];
 
   if (byte == CLOCK) {
+    clk();
     if (clock_count % 24 == 0) {
       //      std::cout << std::dec << clock_count << std::hex << "%24==0\n";
       beat_count++;
@@ -155,17 +195,17 @@ void loop() {
       }
     };
     if (clock_count % 24 == 0) {
-      playChord(127, chord[(measure_count-1)/2]);
+      //      playChord(127, chord[(measure_count-1)/2]);
       // std::cout << "clock: " << std::dec << clock_count << std::hex << " b=" << beat_count << " m=" << measure_count << " chord=" << chord[(measure_count - 1)/ 2] + " ON\n";
     }
     else if (clock_count % 24 == 23) {
-      playChord(0, chord[(measure_count-1)/2]);
+      //      playChord(0, chord[(measure_count-1)/2]);
       // std::cout << "clock: " << std::dec << clock_count << std::hex << " b=" << beat_count << " m=" << measure_count << " chord=" << chord[(measure_count - 1)/ 2] + " OFF\n";
     }
     clock_count = (clock_count+1) % (24*4*4); // (24 clocks/quarter * 4 quarters/measure * 4 measures)
   }
   if (byte != 0xfe && byte != 0xf8) {
-    std::cout << midiEventName(byte) << "\n";
+    //    std::cout << midiEventName(byte) << "\n";
   }
   if ( byte & 0x80 ) {
     if ( byte >=  0xf0 ) { // System Message
@@ -196,3 +236,4 @@ int main(int argc, char *argv[]) {
   }
   device.close();
 }
+
