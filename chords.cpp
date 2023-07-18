@@ -42,6 +42,7 @@
 #define RESET 0xff // System Reset
 
 // Note Number (Middle C = "C4" = 60)
+
 #define B3 59
 #define C4 60
 #define D4 62
@@ -56,7 +57,7 @@
 bool done;
 static void finish(int ignore) { done = true; }
 
-std::string port = "/dev/snd/midiC1D0";
+std::string port = "/dev/snd/midiC2D0";
 std::ifstream device;
 std::ofstream midiOut;
 
@@ -125,7 +126,7 @@ std::string midiEventName(unsigned char event) {
 void playChord(int velocity, const std::string& chord) {
   char buffer[3] = { (char) 0x90, 0, 0 };
   
-  if (chord.compare("A")==0) { buffer[1] = 69; };
+  if (chord.compare("Am")==0) { buffer[1] = 69; };
   if (chord.compare("E")==0) { buffer[1] = 64; };
   buffer[2]=velocity;
   midiOut.write(buffer, 3);
@@ -159,7 +160,7 @@ void clk() {
       // 1 midi CLK event = 1/24 quarter
       // BPM = number of quarter per minute = number of quarter per 60 s
       // BPM = f*60/24 = 2.5 * (clk_count * 1'000'000) / sum_periods_us = 2_500_000 * clk_count/sum_periods_us
-      std::cout << "bpm=" << 2500000*clk_count/sum_periods_us << "\n";
+      std::cout << std::dec << "bpm=" << 2500000*clk_count/sum_periods_us << "\n";
     } else {
       std::cout << "bpm=undef";
     }
@@ -195,12 +196,12 @@ void loop() {
       }
     };
     if (clock_count % 24 == 0) {
-      //      playChord(127, chord[(measure_count-1)/2]);
-      // std::cout << "clock: " << std::dec << clock_count << std::hex << " b=" << beat_count << " m=" << measure_count << " chord=" << chord[(measure_count - 1)/ 2] + " ON\n";
+            playChord(1, chord[(measure_count-1)/2]);
+       std::cout << "clock: " << std::dec << clock_count << std::hex << " b=" << beat_count << " m=" << measure_count << " chord=" << chord[(measure_count - 1)/ 2] + " ON\n";
     }
     else if (clock_count % 24 == 23) {
-      //      playChord(0, chord[(measure_count-1)/2]);
-      // std::cout << "clock: " << std::dec << clock_count << std::hex << " b=" << beat_count << " m=" << measure_count << " chord=" << chord[(measure_count - 1)/ 2] + " OFF\n";
+            playChord(0, chord[(measure_count-1)/2]);
+       std::cout << "clock: " << std::dec << clock_count << std::hex << " b=" << beat_count << " m=" << measure_count << " chord=" << chord[(measure_count - 1)/ 2] + " OFF\n";
     }
     clock_count = (clock_count+1) % (24*4*4); // (24 clocks/quarter * 4 quarters/measure * 4 measures)
   }
@@ -222,7 +223,7 @@ void loop() {
     }
   }
   else {
-    std::cout << "VAL " << std::hex << (int)byte << "\n";
+    //  std::cout << "VAL " << std::hex << (int)byte << "\n";
   }
 }
 
