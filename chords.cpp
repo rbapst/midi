@@ -32,7 +32,7 @@
 #define SYSEX 0xf0
 
 // System Real Time Messages
-#define CLOCK 0xf8 // Timing Clock
+#define CLOCK 0xf8 // Timing Clock (Sent 24 times per 1/4 note) --> 60 [s/min] / ( time in [s] between 2 CLOCK * 24 ) = BPM (Beat Per Minute)
 // 0xf9 Undefined (Reserved)
 #define START 0xfa // Start
 #define CONT 0xfb // Continue
@@ -135,8 +135,22 @@ void playChord(int velocity, const std::string& chord) {
 
 }
 
+void sensing() {
+  // Called whenever 0xfe (SENSING) midi System Real Time Active Sensing message is received
+  static std::chrono::time_point<std::chrono::steady_clock> clk_clock; // previous absolute clock
+
+  auto now = std::chrono::steady_clock::now();
+  auto current_period = (std::chrono::duration_cast<std::chrono::microseconds>(now - clk_clock));
+  if (current_period.count() > 300000) {
+    // if not SENSE received during 300ms it means that midi connection is broken:
+    // --> All Sounds Off, All Notes Off, Reset All Controllers for local sounds
+    // --> No message to send until next SENSE is received
+    std::cout << "MIDI Connection Broken\n";
+  }
+  clk_clock = now;
+
 void clk() {
-  // Called whenever 0xF8 (CLK) midi System Real Time message is received
+  // Called whenever 0xF8 (CLK) midi System Real Time Timing Clock message is received
   // Update average period between CLK event
   static const int clk_count = 24; // Number of clocks used for the avergage
   static int period_us[clk_count] = {0}; // ring buffer of periods in microseconds
